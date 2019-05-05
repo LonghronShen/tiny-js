@@ -16,9 +16,9 @@ if (NOT WIN32)
 	include(CheckCXXCompilerFlag)
 	CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 	if(COMPILER_SUPPORTS_CXX14)
-    		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall")
 	else()
-    		message(FATAL_ERROR "Compiler ${CMAKE_CXX_COMPILER} has no C++14 support.")
+		message(FATAL_ERROR "Compiler ${CMAKE_CXX_COMPILER} has no C++14 support.")
 	endif()
 endif(NOT WIN32)
 
@@ -32,7 +32,7 @@ FILE(GLOB TINY_JS_SOURCE_FILES
     ${CMAKE_CURRENT_LIST_DIR}/TinyJS_MathFunctions.cpp
 )
 
-add_library(tiny-js STATIC ${TINY_JS_HEADER_FILES} ${TINY_JS_SOURCE_FILES})
+ADD_LIBRARY(tiny-js STATIC ${TINY_JS_HEADER_FILES} ${TINY_JS_SOURCE_FILES})
 
 ADD_EXECUTABLE(tiny-js-cli Script.cpp ${TINY_JS_SOURCE_FILES})
 
@@ -41,5 +41,5 @@ ADD_EXECUTABLE(tiny-js-tests run_tests.cpp ${TINY_JS_SOURCE_FILES})
 add_custom_command(
 	TARGET tiny-js-tests POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_directory
-			${CMAKE_SOURCE_DIR}/tests
+			${CMAKE_CURRENT_SOURCE_DIR}/tests
 			${CMAKE_CURRENT_BINARY_DIR}/tests)
