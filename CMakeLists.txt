@@ -1,49 +1,86 @@
-project (tiny-js)
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required(VERSION 3.16)
 
-set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+if(TARGET tiny-js)
+    return()
+endif()
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-if (NOT CMAKE_BUILD_TYPE)
-    set (CMAKE_BUILD_TYPE "Debug")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
-else()
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-endif(NOT CMAKE_BUILD_TYPE)
+include(cotire)
 
-if (NOT WIN32)
-	include(CheckCXXCompilerFlag)
-	CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
-	if(COMPILER_SUPPORTS_CXX14)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall")
-	else()
-		message(FATAL_ERROR "Compiler ${CMAKE_CXX_COMPILER} has no C++14 support.")
+set(project_name tiny-js)
+
+project(tiny-js C CXX)
+
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "Set to 11, 14 or 17 to enable C++11, C++14 or C++17 builds, respectively." FORCE)
+set(CMAKE_C_STANDARD 11 CACHE STRING "Set to 99 or 11 to enable C99 or C11 builds, respectively." FORCE)
+set_property(GLOBAL PROPERTY CXX_STANDARD_REQUIRED ON)
+
+add_compile_definitions("__STDC_WANT_LIB_EXT1__=1")
+
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+include_directories(${CMAKE_BINARY_DIR})
+
+if(WIN32 OR WIN64)
+    add_compile_definitions("WIN32_LEAN_AND_MEAN" "_CRT_SECURE_NO_WARNINGS" "NOMINMAX")
+    if(MSVC)
+		add_compile_options("/source-charset:utf-8" "/EHsc" "/Zc:threadSafeInit-")
 	endif()
-endif(NOT WIN32)
+else()
+    if(UNIX)
+        if(APPLE)
+            add_compile_options("-m64" "-fPIC" "-march=native")
+            set(CMAKE_MACOSX_RPATH 1 CACHE STRING "CMAKE_MACOSX_RPATH" FORCE)
+        else()
+            add_compile_options("-fPIC")
+            if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
+                add_compile_options("-m64" "-march=westmere")
+            endif()
+        endif()
+    endif()
+endif()
 
-FILE(GLOB TINY_JS_HEADER_FILES
+file(GLOB TINY_JS_HEADER_FILES
 	${CMAKE_CURRENT_LIST_DIR}/TinyJS.h
 )
 
-FILE(GLOB TINY_JS_SOURCE_FILES
+file(GLOB TINY_JS_SOURCE_FILES
 	${CMAKE_CURRENT_LIST_DIR}/TinyJS.cpp
     ${CMAKE_CURRENT_LIST_DIR}/TinyJS_Functions.cpp
     ${CMAKE_CURRENT_LIST_DIR}/TinyJS_MathFunctions.cpp
 )
 
-ADD_LIBRARY(tiny-js STATIC ${TINY_JS_HEADER_FILES} ${TINY_JS_SOURCE_FILES})
-TARGET_INCLUDE_DIRECTORIES(tiny-js INTERFACE
+add_library(tiny-js STATIC ${TINY_JS_HEADER_FILES} ${TINY_JS_SOURCE_FILES})
+target_include_directories(tiny-js INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>"
     $<INSTALL_INTERFACE:include/tiny-js>
 )
 
-ADD_EXECUTABLE(tiny-js-cli Script.cpp ${TINY_JS_SOURCE_FILES})
+add_executable(tiny-js-cli Script.cpp)
 
-ADD_EXECUTABLE(tiny-js-tests run_tests.cpp ${TINY_JS_SOURCE_FILES})
+target_link_libraries(tiny-js-cli
+    PUBLIC tiny-js
+)
+
+#############################################
+# Unit tests
+
+# enable CTest testing
+enable_testing()
+
+add_executable(tiny-js-tests run_tests.cpp)
+
+target_link_libraries(tiny-js-tests
+    PUBLIC tiny-js
+)
 
 add_custom_command(
 	TARGET tiny-js-tests POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_directory
 			${CMAKE_CURRENT_SOURCE_DIR}/tests
-			${CMAKE_CURRENT_BINARY_DIR}/tests)
+			${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tests)
+
+add_test(NAME test_all COMMAND tiny-js-tests)
